@@ -9,6 +9,9 @@ from torchvision import transforms
 
 
 def prepare_dataset(opt):
+    # For seed dataset download the dataset zip file from the 
+    # https://figshare.com/articles/figure/A_dataset_based_on_smartphone_acquisition_that_can_be_used_for_seed_identification_using_deep_learning_models/24552394/1
+    # And place it in {opt.zip_path}
     if not os.path.exists(opt.zip_path):
         return
 

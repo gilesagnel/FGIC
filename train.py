@@ -1,16 +1,17 @@
 import torch.nn as nn
 import torch.optim as optim
-import pandas as pd
 
 from utils.options import TrainOptions
-from dataset.dataset import SeedImageDataset, scan_data_folder, create_dataloader
-from models.model import get_model, check_accuracy, save_model
+from dataset.dataset import create_dataloader
+from models.model import get_model, check_accuracy, save_model, load_model
 
 
 if __name__ == "__main__":
     opt = TrainOptions()
     train_loader, val_loader = create_dataloader(opt)
-    model = get_model('resnet34', opt)
+    model = get_model(opt)
+    if opt.continue_train:
+        load_model(model, opt)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=opt.lr)
@@ -38,8 +39,8 @@ if __name__ == "__main__":
         scheduler.step()
 
         if epoch % opt.print_freq == 0:
-            check_accuracy(model, "train", train_loader, opt.device)
-            check_accuracy(model, "val", val_loader, opt.device)
+            check_accuracy(model, train_loader, opt)
+            check_accuracy(model, val_loader, opt, "val")
 
         if epoch % opt.save_epoch_freq == 0:
             save_model(model, epoch, opt)

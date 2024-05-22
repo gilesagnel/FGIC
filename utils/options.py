@@ -13,16 +13,17 @@ class Options:
     pre_trained = True
     img_size: int = 224
     zip_path: str = "dataset/Seed dataset.zip"
+    cls_model: str = "resnet34"
     
     lr: float = 2e-4
     epoch_count: int = 1
     n_epochs: int = 15
     lr_step_size: int = 5
-    continue_train: bool = True
+    continue_train: bool = False
     load_epoch: int = 0
     print_freq: int = 3
     batch_size: int = 128
-    save_epoch_freq: int = 1
+    save_epoch_freq: int = 3
     num_threads: int = 8
 
     checkpoints_dir: str = './checkpoints'
@@ -45,13 +46,13 @@ class Options:
 @dataclass
 class TrainOptions(Options):
     isTrain: bool = True
-    continue_train: bool = False
-    epoch_count: int = 1
-    load_epoch: int = 0
+    continue_train: bool = True
+    epoch_count: int = 5
+    load_epoch: int = 5
 
 @dataclass
 class TestOptions(Options):
     isTrain: bool = False
-    load_epoch: int = 25
-    num_threads = 0   
+    load_epoch: int = 15
+    num_threads = 1  
     batch_size = 1    
