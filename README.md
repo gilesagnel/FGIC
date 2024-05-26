@@ -14,3 +14,5 @@ In this project, multiple models were tried and their accuracies are reported be
 Resnet18: Accuracy - 88.9%
 
 Resnet34: Accuracy - 92.11%
+
+CMAL: Coming
