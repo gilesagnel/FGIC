@@ -10,7 +10,7 @@ from torchvision.datasets import ImageFolder
 from utils.options import Options
 
 
-def prepare_seed_dataset(opt):
+def prepare_seed_dataset(opt: Options):
     # For seed dataset download the dataset zip file from the 
     # https://figshare.com/articles/figure/A_dataset_based_on_smartphone_acquisition_that_can_be_used_for_seed_identification_using_deep_learning_models/24552394/1
     # And place it in {opt.zip_path}
@@ -21,10 +21,6 @@ def prepare_seed_dataset(opt):
         zip_ref.extractall("dataset")
     os.rename(opt.zip_path.split(".")[0], opt.data_root)
     os.remove(opt.zip_path)
-
-    # create checkpoints dir
-    if not os.path.exists(opt.save_dir):
-        os.makedirs(opt.save_dir)
     
     X, y = scan_data_folder(opt.data_root)
     df = pd.DataFrame({'X': X, 'y': y})
