@@ -1,16 +1,16 @@
 import torch
 from torch import nn
-from torchvision.models import resnet50, ResNet50_Weights
-from model import get_basic_conv_layers
-from torch.autograd import Variable
+from torchvision.models import resnet50
+from torch.utils.model_zoo import load_url 
 
 class CMAL(nn.Module):
     def __init__(self, num_class):
         super().__init__()
-        net = resnet50(ResNet50_Weights.DEFAULT)
+        net = resnet50()
+        state_dict = load_url('https://download.pytorch.org/models/resnet50-19c8e357.pth')
+        net.load_state_dict(state_dict)
         net_layers = list(net.children())
-        self.fe_0 = nn.Sequential(*net_layers[:5])
-        self.fe_1 = nn.Sequential(*net_layers[5])
+        self.fe_1 = nn.Sequential(*net_layers[:6])
         self.fe_2 = nn.Sequential(*net_layers[6])
         self.fe_3 = nn.Sequential(*net_layers[7])
 
@@ -35,7 +35,7 @@ class CMAL(nn.Module):
             *get_basic_conv_layers(1024, 512, kernel_size=1, stride=1, padding=0, relu=True),
             *get_basic_conv_layers(512, 1024, kernel_size=3, stride=1, padding=1, relu=True)
         )
-        self.c1 = nn.Sequential(
+        self.c2 = nn.Sequential(
             nn.BatchNorm1d(1024),
             nn.Linear(1024, 512),
             nn.BatchNorm1d(512),
@@ -64,7 +64,6 @@ class CMAL(nn.Module):
         )
 
     def forward(self, x):
-        x = self.fe_0(x)
         x1 = self.fe_1(x)
         x2 = self.fe_2(x1)
         x3 = self.fe_3(x2)
@@ -93,6 +92,15 @@ class CMAL(nn.Module):
 
         return x1_c, x2_c, x3_c, x_c_all, map1, map2, map3
 
+def get_basic_conv_layers(in_nc, out_nc, kernel_size, stride=1, padding=0, 
+                        dilation=1, groups=1, relu=True, bn=True, bias=False):
+    layers = [nn.Conv2d(in_nc, out_nc, kernel_size=kernel_size, stride=stride, padding=padding, 
+                            dilation=dilation, groups=groups, bias=bias)]
+    if bn:
+        layers += [nn.BatchNorm2d(out_nc, eps=1e-5,
+                                momentum=0.01, affine=True)]
+    if relu:
+        layers += [nn.ReLU()]
 
-
+    return layers
     

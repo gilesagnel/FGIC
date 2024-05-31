@@ -9,46 +9,47 @@ class Options:
     model_name: str = "seeds"
     device: str = "mps"
 
-    out_dim = 88
+    num_class = 88
     pre_trained = True
-    img_size: int = 224
+    img_load_size: int = 244 # 550 / 244
+    img_crop_size: int = 244 # 448 / 244
+    img_crop_padding: int = 8
     zip_path: str = "dataset/Seed dataset.zip"
-    cls_model: str = "resnet34"
+    cls_model: str = "resnet34" # "cmal" / "resnet18" / "resnet34"
     
     lr: float = 2e-4
-    epoch_count: int = 1
+    start_epoch: int = 1
     n_epochs: int = 15
     lr_step_size: int = 5
     continue_train: bool = False
     load_epoch: int = 0
     print_freq: int = 3
+    print_batch_freq: int = 10
     batch_size: int = 128
     save_epoch_freq: int = 3
     num_threads: int = 8
 
     checkpoints_dir: str = './checkpoints'
-    save_dir: str = field(init=False)
-
-    img_size: int = 224
 
     # mean and std for normalize the image
     mean: list = field(init=False)
     std: list = field(init=False)
+    preprocess: list =field(init=False)
 
     def __post_init__(self):
         self.data_root = f"./dataset/{self.model_name}"
-        self.save_dir = os.path.join(self.checkpoints_dir, self.model_name)
-        self.mean = [0.4263, 0.3897, 0.3341]
-        self.std = [0.2910, 0.2742, 0.2455]
+        self.mean = [0.4263, 0.3897, 0.3341] # [0.5, 0.5, 0.5] / [0.4263, 0.3897, 0.3341]
+        self.std = [0.2910, 0.2742, 0.2455] # [0.5, 0.5, 0.5] / [0.2910, 0.2742, 0.2455]
+        self.preprocess = ['resize', 'crop', 'h-flip', ] # 'resize', 'crop', 'h-flip', 'v-flip', 'rotate'
 
 
 
 @dataclass
 class TrainOptions(Options):
     isTrain: bool = True
-    continue_train: bool = True
-    epoch_count: int = 5
-    load_epoch: int = 5
+    continue_train: bool = False
+    start_epoch: int = 1
+    load_epoch: int = 0
 
 @dataclass
 class TestOptions(Options):

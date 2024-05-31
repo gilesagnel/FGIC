@@ -2,13 +2,15 @@ import os
 import shutil
 import pandas as pd
 import zipfile
-from PIL import Image
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from torchvision import transforms
+from torchvision.datasets import ImageFolder
+
+from utils.options import Options
 
 
-def prepare_dataset(opt):
+def prepare_seed_dataset(opt):
     # For seed dataset download the dataset zip file from the 
     # https://figshare.com/articles/figure/A_dataset_based_on_smartphone_acquisition_that_can_be_used_for_seed_identification_using_deep_learning_models/24552394/1
     # And place it in {opt.zip_path}
@@ -46,68 +48,48 @@ def prepare_dataset(opt):
         if os.path.exists(old_dir):
             os.removedirs(os.path.join(opt.data_root, label))
 
-    
-
 def scan_data_folder(data_root):
     X = []
     y = []
     for root, dirs, _ in os.walk(data_root):
         for dir_name in dirs:
+            count = 0
             for f in os.listdir(os.path.join(root, dir_name)):
+                count += 1
+                if count > 3:
+                    break
                 X.append(os.path.join(data_root, dir_name, f))
                 y.append(dir_name)
 
     return X, y
 
-def create_dataloader(opt):
-    transform = transforms.Compose([
-        transforms.Resize((opt.img_size, opt.img_size)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
-        transforms.RandomRotation(degrees=(0, 180)),
+def create_dataloader(opt: Options):
+    transform_list = []
+    if 'resize' in opt.preprocess:
+        transform_list.append(transforms.Resize((opt.img_load_size, opt.img_load_size)))
+    if 'crop' in opt.preprocess:
+        transform_list.append(transforms.RandomCrop(opt.img_crop_size, padding=opt.img_crop_padding))
+    if 'h-flip' in opt.preprocess:
+        transform_list.append(transforms.RandomHorizontalFlip())
+    if 'v-flip' in opt.preprocess:
+        transform_list.append(transforms.RandomVerticalFlip())
+    if 'rotate' in opt.preprocess:
+        transform_list.append(transforms.RandomRotation(0, 180))
+    
+    transform_list.extend([
         transforms.ToTensor(),
-        transforms.Normalize(mean=opt.mean, std=opt.std),
-    ])
+        transforms.Normalize(mean=opt.mean, std=opt.std)]
+    )
+    transform = transforms.Compose(transform_list)
     
     if opt.isTrain:
-        train_set = SeedImageDataset(os.path.join(opt.data_root, "train"), transform=transform)
-        val_set = SeedImageDataset(os.path.join(opt.data_root, "val"), transform=transform)
+        train_set = ImageFolder(f"{opt.data_root}/train", transform=transform)
+        val_set = ImageFolder(f"{opt.data_root}/val", transform=transform)
         train_loader = DataLoader(train_set, batch_size=opt.batch_size, shuffle=True, 
                               num_workers=opt.num_threads)
         val_loader = DataLoader(val_set, batch_size=1)
         return train_loader, val_loader
     else:
-        test_set = SeedImageDataset(os.path.join(opt.data_root, "test"), transform=transform)
+        test_set = ImageFolder(f"{opt.data_root}/test", transform=transform)
         test_loader = DataLoader(test_set, batch_size=1)
         return test_loader
-
-
-
-class SeedImageDataset(Dataset):
-    def __init__(self, root_dir, transform=None, target_transform=None):
-        self.X = []
-        self.y = []
-        self.cat_labels = []
-        self.root_dir = root_dir
-        self.scan_data()
-        self.transform = transform
-        self.target_transform = target_transform
-
-    def __len__(self):
-        return len(self.X)
-    
-    def scan_data(self):
-        self.X, self.y = scan_data_folder(self.root_dir)
-        self.cat_labels = list(set(self.y))
-        self.cat_labels.sort()
-
-
-    def __getitem__(self, idx):
-        image = Image.open(self.X[idx]).convert("RGB")
-        label = self.cat_labels.index(self.y[idx])
-        if self.transform:
-            image = self.transform(image)
-        if self.target_transform:
-            label = self.target_transform(label)
-        return image, label
-    
