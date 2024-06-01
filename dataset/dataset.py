@@ -23,7 +23,13 @@ def prepare_seed_dataset():
     os.rename(opt.zip_path.split(".")[0], opt.data_root)
     os.remove(opt.zip_path)
     
-    X, y = scan_data_folder(opt.data_root)
+    X = []
+    y = []
+    for root, dirs, _ in os.walk(opt.data_root):
+        for dir_name in dirs:
+            for f in os.listdir(os.path.join(root, dir_name)):
+                X.append(os.path.join(opt.data_root, dir_name, f))
+                y.append(dir_name)
     df = pd.DataFrame({'X': X, 'y': y})
     train_df, test_df = train_test_split(df, test_size=0.2, stratify=df['y'], random_state=42)
     train_df, val_df = train_test_split(train_df, test_size=0.2, stratify=train_df['y'], random_state=42)
@@ -44,21 +50,7 @@ def prepare_seed_dataset():
         old_dir = os.path.join(opt.data_root, label)
         if os.path.exists(old_dir):
             os.removedirs(os.path.join(opt.data_root, label))
-
-def scan_data_folder(data_root):
-    X = []
-    y = []
-    for root, dirs, _ in os.walk(data_root):
-        for dir_name in dirs:
-            count = 0
-            for f in os.listdir(os.path.join(root, dir_name)):
-                count += 1
-                if count > 3:
-                    break
-                X.append(os.path.join(data_root, dir_name, f))
-                y.append(dir_name)
-
-    return X, y
+            
 
 def create_dataloader(opt: Options):
     transform_list = []
