@@ -48,23 +48,25 @@ class ResnetModel(BaseModel):
     def lr_scheduler_step(self, _):
         self.scheduler.step()
 
-    def print_metrics(self, epoch, batch_idx, type="batch"):
+    def print_metrics(self, epoch, batch_idx, metric_type="batch"):
         loss = self.train_loss / batch_idx
         accuracy = 100. * float(self.correct) / self.total
 
-        metric_name = "Step" if type == "batch" else "Iteration"
-        idx = batch_idx if type == "batch" else epoch
+        metric_name = "Step" if metric_type == "batch" else "Iteration"
+        idx = batch_idx if metric_type == "batch" else epoch
 
         print(f'{metric_name}: {idx} | Loss: {loss:.3f} | '
               f'Acc: {accuracy:.3f}% ({self.correct}/{self.total})')
+        if metric_type == "epoch":
+            self.writter.add_scalar("Train/Loss", loss, epoch)
+            self.writter.add_scalar("Train/Accuracy", accuracy, epoch)
         
-    def evaluate(self, data_loader):
+    def evaluate(self, data_loader, epoch=None, is_val=False):
         self.model.eval()
         test_loss = 0
         correct = 0
         total = 0
         batch_idx = 0
-
         
         for batch_idx, (inputs, targets) in enumerate(data_loader, start=1):
             inputs, targets = inputs.to(self.device), targets.to(self.device)
@@ -78,6 +80,10 @@ class ResnetModel(BaseModel):
 
         total_test_acc = 100. * float(correct) / total
         total_test_loss = test_loss / batch_idx
+        if is_val:
+            self.writter.add_scalar("Val/loss", total_test_loss, epoch)
+            self.writter.add_scalar("Val/accuracy", total_test_acc, epoch)
+            print("Validation:")
         print(f'Loss: {total_test_loss:.3f} | Acc: {total_test_acc:.3f}%' )
         self.model.train()
 

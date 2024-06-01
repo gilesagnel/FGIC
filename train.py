@@ -21,12 +21,11 @@ if __name__ == "__main__":
             if batch_idx % opt.print_batch_freq == 0:
                 model.print_metrics(epoch, batch_idx)
 
-        model.print_metrics(epoch, batch_idx, type="epoch")
         model.lr_scheduler_step(epoch)
 
         if epoch % opt.print_freq == 0:
-            print("Validation:")
-            model.evaluate(val_loader)
+            model.print_metrics(epoch, batch_idx, metric_type="epoch")
+            model.evaluate(val_loader, epoch, True)
 
         if epoch % opt.save_epoch_freq == 0:
             model.save_model(epoch)

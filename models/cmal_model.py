@@ -35,7 +35,7 @@ class CmalModel(BaseModel):
                                 self.model.fe_2.parameters(), self.model.fe_3.parameters() ]
             optimizer_params = [{'params': params, 'lr': lr} for params, lr in zip(parameter_groups, self.lr)]
             self.optimizer = optim.SGD(optimizer_params, momentum=0.9, weight_decay=5e-4)
-            self.loss =  torch.nn.CrossEntropyLoss()
+            self.loss_fn =  torch.nn.CrossEntropyLoss()
     
     def train_step(self, inputs, targets):
         if inputs.shape[0] < self.opt.batch_size:
@@ -48,7 +48,7 @@ class CmalModel(BaseModel):
         self.optimizer.zero_grad()
         inputs3 = inputs
         output_1, output_2, output_3, _, map1, map2, map3 = self.model(inputs3)
-        loss3 = self.loss(output_3, targets) * 1
+        loss3 = self.loss_fn(output_3, targets) * 1
         loss3.backward()
         self.optimizer.step()
 
@@ -68,7 +68,7 @@ class CmalModel(BaseModel):
             inputs2 = inputs
 
         _, output_2, _, _, _, map2, _ = self.model(inputs2)
-        loss2 = self.loss(output_2, targets) * 1
+        loss2 = self.loss_fn(output_2, targets) * 1
         loss2.backward()
         self.optimizer.step()
 
@@ -83,7 +83,7 @@ class CmalModel(BaseModel):
             inputs1 = inputs
 
         output_1, _, _, _, map1, _, _ = self.model(inputs1)
-        loss1 = self.loss(output_1, targets) * 1
+        loss1 = self.loss_fn(output_1, targets) * 1
         loss1.backward()
         self.optimizer.step()
 
@@ -91,10 +91,10 @@ class CmalModel(BaseModel):
         # Train the experts and their concatenation with the overall attention region in one go
         self.optimizer.zero_grad()
         output_1_ATT, output_2_ATT, output_3_ATT, output_concat_ATT, _, _, _ = self.model(inputs_ATT)
-        concat_loss_ATT = self.loss(output_1_ATT, targets)+\
-                        self.loss(output_2_ATT, targets)+\
-                        self.loss(output_3_ATT, targets)+\
-                        self.loss(output_concat_ATT, targets) * 2
+        concat_loss_ATT = self.loss_fn(output_1_ATT, targets)+\
+                        self.loss_fn(output_2_ATT, targets)+\
+                        self.loss_fn(output_3_ATT, targets)+\
+                        self.loss_fn(output_concat_ATT, targets) * 2
         concat_loss_ATT.backward()
         self.optimizer.step()
 
@@ -102,7 +102,7 @@ class CmalModel(BaseModel):
         # Train the concatenation of the experts with the raw input
         self.optimizer.zero_grad()
         _, _, _, output_concat, _, _, _ = self.model(inputs)
-        concat_loss = self.loss(output_concat, targets) * 2
+        concat_loss = self.loss_fn(output_concat, targets) * 2
         concat_loss.backward()
         self.optimizer.step()
 
@@ -126,7 +126,7 @@ class CmalModel(BaseModel):
         self.correct = 0
         self.total = 0
 
-    def evaluate(self, data_loader):
+    def evaluate(self, data_loader, epoch=None, is_val=False):
         self.model.eval()
         test_loss = 0
         correct = 0
@@ -151,7 +151,7 @@ class CmalModel(BaseModel):
                 outputs_com2 = output_1 + output_2 + output_3 + output_concat
                 outputs_com = outputs_com2 + output_1_ATT + output_2_ATT + output_3_ATT + output_concat_ATT
 
-                loss = self.loss(output_concat, targets)
+                loss = self.loss_fn(output_concat, targets)
 
                 test_loss += loss.item()
                 _, predicted = torch.max(output_concat.data, 1)
@@ -164,6 +164,10 @@ class CmalModel(BaseModel):
 
         test_acc_en = 100. * float(correct_com) / total
         test_loss = test_loss / (batch_idx + 1)
+        if is_val:
+            self.writter.add_scalar("Val/Loss", test_loss, epoch)
+            self.writter.add_scalar("Val/Accuarcy", test_acc_en, epoch)
+            print("Validation:")
         print(f'Loss: {test_loss:.3f} | Acc: {test_acc_en:.3f}%' )
         self.model.train()
     
@@ -174,7 +178,7 @@ class CmalModel(BaseModel):
         inputs_att = self.attention_im(inputs, att_map)
         return att_map, inputs_att
     
-    def print_metrics(self, epoch, batch_idx, type="batch"):
+    def print_metrics(self, epoch, batch_idx, metric_type="batch"):
         loss1 = self.train_loss[1] / batch_idx
         loss2 = self.train_loss[2] / batch_idx
         loss3 = self.train_loss[3] / batch_idx
@@ -183,12 +187,21 @@ class CmalModel(BaseModel):
         total_loss = self.train_loss[0] / batch_idx
         accuracy = 100. * float(self.correct) / self.total
 
-        metric_name = "Step" if type == "batch" else "Iteration"
-        idx = batch_idx if type == "batch" else epoch
+        metric_name = "Step" if metric_type == "batch" else "Iteration"
+        idx = batch_idx if metric_type == "batch" else epoch
 
         print(f'{metric_name}: {idx} | Loss1: {loss1:.3f} | Loss2: {loss2:.5f} | '
               f'Loss3: {loss3:.5f} | Loss_ATT: {loss_att:.5f} | Loss_concat: {loss_concat:.5f} | '
               f'Loss: {total_loss:.3f} | Acc: {accuracy:.3f}% ({self.correct}/{self.total})')
+
+        if metric_type == "epoch":
+            self.writter.add_scalar("Train/Loss/1", loss1, epoch)
+            self.writter.add_scalar("Train/Loss/2", loss2, epoch)
+            self.writter.add_scalar("Train/Loss/3", loss3, epoch)
+            self.writter.add_scalar("Train/Loss/ATT", loss_att, epoch)
+            self.writter.add_scalar("Train/Loss/concat", loss_concat, epoch)
+            self.writter.add_scalar("Train/Loss/all", total_loss, epoch)
+            self.writter.add_scalar("Train/Accuracy", accuracy, epoch)
     
     def cosine_anneal_schedule(self, t, lr):
         cos_inner = np.pi * (t % (self.opt.n_epochs))  # t - 1 is used when t has 1-based indexing.

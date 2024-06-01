@@ -2,3 +2,5 @@
 dataset/**
 !dataset/dataset.py
 checkpoints/**
+runs/**
+.DS_Store

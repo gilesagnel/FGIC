@@ -1,6 +1,7 @@
 import os
 import torch
 from abc import ABC, abstractmethod
+from torch.utils.tensorboard import SummaryWriter
 
 from utils.options import Options
 
@@ -12,6 +13,7 @@ class BaseModel(ABC):
         self.device = torch.device(opt.device)
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.model_name)  
         self.model = None
+        self.writter = SummaryWriter()
 
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
@@ -29,11 +31,11 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod     
-    def print_metrics(self, epoch, batch_idx, type="batch"):
+    def print_metrics(self, epoch, batch_idx, metric_type="batch"):
         pass
     
     @abstractmethod     
-    def evaluate(self, data_loader):
+    def evaluate(self, data_loader, epoch=None, is_val=False):
         pass
 
     def save_model(self, epoch):

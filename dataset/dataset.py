@@ -10,10 +10,11 @@ from torchvision.datasets import ImageFolder
 from utils.options import Options
 
 
-def prepare_seed_dataset(opt: Options):
+def prepare_seed_dataset():
     # For seed dataset download the dataset zip file from the 
     # https://figshare.com/articles/figure/A_dataset_based_on_smartphone_acquisition_that_can_be_used_for_seed_identification_using_deep_learning_models/24552394/1
     # And place it in {opt.zip_path}
+    opt = Options()
     if not os.path.exists(opt.zip_path):
         return
 
@@ -70,7 +71,7 @@ def create_dataloader(opt: Options):
     if 'v-flip' in opt.preprocess:
         transform_list.append(transforms.RandomVerticalFlip())
     if 'rotate' in opt.preprocess:
-        transform_list.append(transforms.RandomRotation(0, 180))
+        transform_list.append(transforms.RandomRotation(degrees=(0, 180)))
     
     transform_list.extend([
         transforms.ToTensor(),
@@ -83,9 +84,9 @@ def create_dataloader(opt: Options):
         val_set = ImageFolder(f"{opt.data_root}/val", transform=transform)
         train_loader = DataLoader(train_set, batch_size=opt.batch_size, shuffle=True, 
                               num_workers=opt.num_threads)
-        val_loader = DataLoader(val_set, batch_size=1)
+        val_loader = DataLoader(val_set, batch_size=opt.batch_size, num_workers=opt.num_threads)
         return train_loader, val_loader
     else:
         test_set = ImageFolder(f"{opt.data_root}/test", transform=transform)
-        test_loader = DataLoader(test_set, batch_size=1)
+        test_loader = DataLoader(test_set, batch_size=opt.batch_size, num_workers=opt.num_threads)
         return test_loader
