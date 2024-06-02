@@ -10,9 +10,8 @@ class Options:
     device: str = "mps"
 
     num_class = 88
-    pre_trained = True
-    img_load_size: int = 550 # 550 / 244
-    img_crop_size: int = 448 # 448 / 244
+    img_load_size: int = 448 # 550 / 224
+    img_crop_size: int = 448 # 448 / 224
     img_crop_padding: int = 8
     zip_path: str = "dataset/Seed dataset.zip"
     cls_model: str = "cmal" # "cmal" / "resnet18" / "resnet34"
@@ -24,7 +23,7 @@ class Options:
     continue_train: bool = False
     load_epoch: int = 0
     print_freq: int = 1
-    print_batch_freq: int = 10
+    print_batch_freq: int = 20
     batch_size: int = 16
     save_epoch_freq: int = 3
     num_threads: int = 8
@@ -40,7 +39,7 @@ class Options:
         self.data_root = f"./dataset/{self.model_name}"
         self.mean = [0.4263, 0.3897, 0.3341] # [0.5, 0.5, 0.5] / [0.4263, 0.3897, 0.3341]
         self.std = [0.2910, 0.2742, 0.2455] # [0.5, 0.5, 0.5] / [0.2910, 0.2742, 0.2455]
-        self.preprocess = ['resize', 'crop', 'h-flip', 'v-flip', 'rotate' ] # 'resize', 'crop', 'h-flip', 'v-flip', 'rotate'
+        self.preprocess = ['resize', 'h-flip', 'v-flip', 'rotate'] # 'resize', 'crop', 'h-flip', 'v-flip', 'rotate'
 
 
 

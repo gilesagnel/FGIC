@@ -62,6 +62,20 @@ class CMAL(nn.Module):
             nn.ELU(inplace=True),
             nn.Linear(512, num_class),
         )
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for name, param in self.named_parameters():
+            if 'fe_1' in name or 'fe_2' in name or 'fe_3' in name:
+                continue  # Skip initialization for fe_1, fe_2, and fe_3
+            
+            if len(param.shape) < 2:
+                continue
+            
+            if 'weight' in name:
+                nn.init.kaiming_normal_(param)
+            elif 'bias' in name:
+                nn.init.zeros_(param)
 
     def forward(self, x):
         x1 = self.fe_1(x)

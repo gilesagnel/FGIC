@@ -27,14 +27,14 @@ class CmalModel(BaseModel):
         self.model.to(self.device)
 
         if self.isTrain:
-            self.lr = [0.002] * 7 + [0.0002] * 3
+            self.lr = [5e-5] * 10
             parameter_groups = [self.model.c_all.parameters(), self.model.cb1.parameters(),
                                 self.model.c1.parameters(), self.model.cb2.parameters(),
                                 self.model.c2.parameters(), self.model.cb3.parameters(),
                                 self.model.c3.parameters(), self.model.fe_1.parameters(),
                                 self.model.fe_2.parameters(), self.model.fe_3.parameters() ]
             optimizer_params = [{'params': params, 'lr': lr} for params, lr in zip(parameter_groups, self.lr)]
-            self.optimizer = optim.SGD(optimizer_params, momentum=0.9, weight_decay=5e-4)
+            self.optimizer = optim.Adam(optimizer_params)
             self.loss_fn =  torch.nn.CrossEntropyLoss()
     
     def train_step(self, inputs, targets):
@@ -204,11 +204,12 @@ class CmalModel(BaseModel):
             self.writter.add_scalar("Train/Accuracy", accuracy, epoch)
     
     def cosine_anneal_schedule(self, t, lr):
-        cos_inner = np.pi * (t % (self.opt.n_epochs))  # t - 1 is used when t has 1-based indexing.
-        cos_inner /= (self.opt.n_epochs)
-        cos_out = np.cos(cos_inner) + 1
+        return lr
+        # cos_inner = np.pi * (t % (self.opt.n_epochs))  
+        # cos_inner /= (self.opt.n_epochs)
+        # cos_out = np.cos(cos_inner) + 1
 
-        return float(lr / 2 * cos_out)
+        # return float(lr / 2 * cos_out)
 
     @staticmethod
     def map_generate(attention_map, pred, p1, p2):
