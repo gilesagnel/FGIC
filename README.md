@@ -1,5 +1,5 @@
-# FGIC
-Fine-Grained Image Classification
+# FGVC
+Fine-Grained Visual Classification
 
 ## Seed Image Classification
 The dataset used for this project is available [here](https://www.nature.com/articles/s41597-024-03176-5#ref-CR30).
