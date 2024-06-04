@@ -9,13 +9,9 @@ class ResnetModel(BaseModel):
     def __init__(self, opt: Options):
         BaseModel.__init__(self, opt)
         if opt.cls_model == 'resnet18':
-            if opt.pre_trained:
-                weights = ResNet18_Weights.IMAGENET1K_V1
-            self.model = resnet18(weights=weights)
+            self.model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
         else:
-            if opt.pre_trained:
-                weights = ResNet34_Weights.IMAGENET1K_V1
-            self.model = resnet34(weights=weights)
+            self.model = resnet34(weights = ResNet34_Weights.IMAGENET1K_V1)
 
         num_ftrs = self.model.fc.in_features
         self.model.fc = nn.Linear(num_ftrs, opt.num_class)
@@ -66,9 +62,9 @@ class ResnetModel(BaseModel):
         test_loss = 0
         correct = 0
         total = 0
-        batch_idx = 0
+        batch_len = len(data_loader)
         
-        for batch_idx, (inputs, targets) in enumerate(data_loader, start=1):
+        for inputs, targets in data_loader:
             inputs, targets = inputs.to(self.device), targets.to(self.device)
             with torch.no_grad():
                 outputs = self.model(inputs)
@@ -79,7 +75,7 @@ class ResnetModel(BaseModel):
                 correct += predicted.eq(targets.data).cpu().sum()
 
         total_test_acc = 100. * float(correct) / total
-        total_test_loss = test_loss / batch_idx
+        total_test_loss = test_loss / batch_len
         if is_val:
             self.writter.add_scalar("Val/loss", total_test_loss, epoch)
             self.writter.add_scalar("Val/accuracy", total_test_acc, epoch)

@@ -23,21 +23,26 @@ from utils.options import Options
 class CmalModel(BaseModel):
     def __init__(self, opt: Options):
         BaseModel.__init__(self, opt)
-        self.model = CMAL(opt.num_class)
+        if 'crop' in opt.preprocess:
+            ks = opt.img_crop_size // 8
+        else:
+            ks = opt.img_load_size // 8
+        self.model = CMAL(opt.num_class, ks, opt.base_model)
         self.model.to(self.device)
-
+        
+        self.loss_fn =  torch.nn.CrossEntropyLoss()
         if self.isTrain:
-            self.lr = [5e-5] * 10
-            parameter_groups = [self.model.c_all.parameters(), self.model.cb1.parameters(),
-                                self.model.c1.parameters(), self.model.cb2.parameters(),
-                                self.model.c2.parameters(), self.model.cb3.parameters(),
-                                self.model.c3.parameters(), self.model.fe_1.parameters(),
-                                self.model.fe_2.parameters(), self.model.fe_3.parameters() ]
+            self.lr = [1e-2] * 7 + [1e-4] * 3
+            parameter_groups = [self.model.c_all.parameters(), 
+                                self.model.cb1.parameters(), self.model.c1.parameters(), 
+                                self.model.cb2.parameters(), self.model.c2.parameters(), 
+                                self.model.cb3.parameters(), self.model.c3.parameters(), 
+                                self.model.fe_1.parameters(), self.model.fe_2.parameters(), self.model.fe_3.parameters() ]
             optimizer_params = [{'params': params, 'lr': lr} for params, lr in zip(parameter_groups, self.lr)]
-            self.optimizer = optim.Adam(optimizer_params)
-            self.loss_fn =  torch.nn.CrossEntropyLoss()
-    
-    def train_step(self, inputs, targets):
+            self.optimizer = optim.SGD(optimizer_params, momentum=0.9)
+            
+    #  Step: 5 | Loss1: 5.033 | Loss2: 4.98512 | Loss3: 4.96999 | Loss_ATT: 18.16286 | Loss_concat: 2.12873 | Loss: 17.117 | Acc: 81.250% (65/80)
+    def train_step(self, inputs, targets, epoch=None):
         if inputs.shape[0] < self.opt.batch_size:
             return
         inputs, targets = inputs.to(self.device), targets.to(self.device)
@@ -117,9 +122,13 @@ class CmalModel(BaseModel):
         self.train_loss[4] += concat_loss_ATT.item()
         self.train_loss[5] += concat_loss.item()
 
-    def lr_scheduler_step(self, epoch):
         for nlr in range(len(self.optimizer.param_groups)):
             self.optimizer.param_groups[nlr]['lr'] = self.cosine_anneal_schedule(epoch, self.lr[nlr])
+
+    def lr_scheduler_step(self, epoch):
+        pass
+        # for nlr in range(len(self.optimizer.param_groups)):
+        #     self.optimizer.param_groups[nlr]['lr'] = self.cosine_anneal_schedule(epoch, self.lr[nlr])
     
     def setup_loss(self):
         self.train_loss = np.zeros(6)
@@ -162,13 +171,18 @@ class CmalModel(BaseModel):
                 correct_com += predicted_com.eq(targets.data).cpu().sum()
                 correct_com2 += predicted_com2.eq(targets.data).cpu().sum()
 
-        test_acc_en = 100. * float(correct_com) / total
+        test_acc_1 = 100. * float(correct) / total
+        test_acc_2 = 100. * float(correct_com) / total
+        test_acc_3 = 100. * float(correct_com2) / total
         test_loss = test_loss / (batch_idx + 1)
         if is_val:
             self.writter.add_scalar("Val/Loss", test_loss, epoch)
-            self.writter.add_scalar("Val/Accuarcy", test_acc_en, epoch)
+            self.writter.add_scalar("Val/Accuarcy 1", test_acc_1, epoch)
+            self.writter.add_scalar("Val/Accuarcy 2", test_acc_2, epoch)
+            self.writter.add_scalar("Val/Accuarcy 3", test_acc_3, epoch)
             print("Validation:")
-        print(f'Loss: {test_loss:.3f} | Acc: {test_acc_en:.3f}%' )
+        print(f'Loss: {test_loss:.3f} | Acc 1: {test_acc_1:.3f}% | Acc 2: {test_acc_2:.3f}% |'
+              f' Acc 3: {test_acc_3:.3f}%' )
         self.model.train()
     
     def generate_attention_map(self, map, inputs, output, level):
@@ -187,7 +201,7 @@ class CmalModel(BaseModel):
         total_loss = self.train_loss[0] / batch_idx
         accuracy = 100. * float(self.correct) / self.total
 
-        metric_name = "Step" if metric_type == "batch" else "Iteration"
+        metric_name = f"Epoch {epoch} Step" if metric_type == "batch" else "Iteration"
         idx = batch_idx if metric_type == "batch" else epoch
 
         print(f'{metric_name}: {idx} | Loss1: {loss1:.3f} | Loss2: {loss2:.5f} | '
@@ -204,12 +218,11 @@ class CmalModel(BaseModel):
             self.writter.add_scalar("Train/Accuracy", accuracy, epoch)
     
     def cosine_anneal_schedule(self, t, lr):
-        return lr
-        # cos_inner = np.pi * (t % (self.opt.n_epochs))  
-        # cos_inner /= (self.opt.n_epochs)
-        # cos_out = np.cos(cos_inner) + 1
+        cos_inner = np.pi * (t % (self.opt.n_epochs))  
+        cos_inner /= (self.opt.n_epochs)
+        cos_out = np.cos(cos_inner) + 1
 
-        # return float(lr / 2 * cos_out)
+        return float(lr / 2 * cos_out)
 
     @staticmethod
     def map_generate(attention_map, pred, p1, p2):

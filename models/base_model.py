@@ -44,14 +44,14 @@ class BaseModel(ABC):
 
         if self.opt.device in ["cuda", "mps"]:
             self.model = self.model.cpu()
-
+      
         torch.save(self.model.state_dict(), save_path)
-
+        print(f"{save_filename} saved")
         if self.opt.device in ["cuda", "mps"]:
             self.model.to(self.device)
 
     def load_model(self):
-        if self.opt.load_epoch == 0 or not self.opt.continue_train:
+        if self.opt.load_epoch == 0 and not self.opt.continue_train:
             return
         model_filename = f"{self.opt.load_epoch}_model_{self.opt.model_name}.pth"
         state_dict = torch.load(os.path.join(self.save_dir, model_filename))

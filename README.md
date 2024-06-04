@@ -15,4 +15,8 @@ Resnet18: Accuracy - 88.9%
 
 Resnet34: Accuracy - 92.11%
 
-CMAL: Coming
+CMAL: Accuracy - 94.89%
+
+CMAL - Cross-layer Mutual Attention Learning
+
+This model was implemented based on the [paper](https://www.sciencedirect.com/science/article/pii/S0031320323002509) 

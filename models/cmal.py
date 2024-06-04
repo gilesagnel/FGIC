@@ -1,73 +1,80 @@
 import torch
 from torch import nn
-from torchvision.models import resnet50
-from torch.utils.model_zoo import load_url 
+from torchvision.models import resnext50_32x4d, resnet50,resnet34, ResNet50_Weights, ResNet34_Weights, ResNeXt50_32X4D_Weights
 
 class CMAL(nn.Module):
-    def __init__(self, num_class):
+    def __init__(self, num_class, ks, base_model):
         super().__init__()
-        net = resnet50()
-        state_dict = load_url('https://download.pytorch.org/models/resnet50-19c8e357.pth')
-        net.load_state_dict(state_dict)
+        if base_model == "resnet34":
+            net = resnet34(weights=ResNet34_Weights.DEFAULT)
+            nf = 128
+        elif base_model == "resnet50":
+            net = resnet50(weights=ResNet50_Weights.DEFAULT)
+            nf = 512
+        else:
+            net = resnext50_32x4d(weights=ResNeXt50_32X4D_Weights.DEFAULT)
+            nf = 512
+
         net_layers = list(net.children())
         self.fe_1 = nn.Sequential(*net_layers[:6])
         self.fe_2 = nn.Sequential(*net_layers[6])
         self.fe_3 = nn.Sequential(*net_layers[7])
 
-        self.mp1 = nn.MaxPool2d(kernel_size=56, stride=1)
-        self.mp2 = nn.MaxPool2d(kernel_size=28, stride=1)
-        self.mp3 = nn.MaxPool2d(kernel_size=14, stride=1)
+
+        self.mp1 = nn.MaxPool2d(kernel_size=ks, stride=1)
+        self.mp2 = nn.MaxPool2d(kernel_size=ks//2, stride=1)
+        self.mp3 = nn.MaxPool2d(kernel_size=ks//4, stride=1)
 
         self.cb1 = nn.Sequential(
-            *get_basic_conv_layers(512, 512, kernel_size=1, stride=1, padding=0, relu=True),
-            *get_basic_conv_layers(512, 1024, kernel_size=3, stride=1, padding=1, relu=True)
+            *get_basic_conv_layers(nf, nf, kernel_size=1, stride=1, padding=0, relu=True),
+            *get_basic_conv_layers(nf, nf * 2, kernel_size=3, stride=1, padding=1, relu=True)
         )
 
         self.c1 = nn.Sequential(
-            nn.BatchNorm1d(1024),
-            nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(nf * 2),
+            nn.Linear(nf * 2, nf),
+            nn.BatchNorm1d(nf),
             nn.ELU(inplace=True),
-            nn.Linear(512, num_class)
+            nn.Linear(nf, num_class)
         )
 
         self.cb2 = nn.Sequential(
-            *get_basic_conv_layers(1024, 512, kernel_size=1, stride=1, padding=0, relu=True),
-            *get_basic_conv_layers(512, 1024, kernel_size=3, stride=1, padding=1, relu=True)
+            *get_basic_conv_layers(nf * 2, nf, kernel_size=1, stride=1, padding=0, relu=True),
+            *get_basic_conv_layers(nf, nf * 2, kernel_size=3, stride=1, padding=1, relu=True)
         )
         self.c2 = nn.Sequential(
-            nn.BatchNorm1d(1024),
-            nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(nf * 2),
+            nn.Linear(nf * 2, nf),
+            nn.BatchNorm1d(nf),
             nn.ELU(inplace=True),
-            nn.Linear(512, num_class),
+            nn.Linear(nf, num_class),
         )
 
         self.cb3 = nn.Sequential(
-            *get_basic_conv_layers(2048, 512, kernel_size=1, stride=1, padding=0, relu=True),
-            *get_basic_conv_layers(512, 1024, kernel_size=3, stride=1, padding=1, relu=True)
+            *get_basic_conv_layers(nf * 4, nf, kernel_size=1, stride=1, padding=0, relu=True),
+            *get_basic_conv_layers(nf, nf * 2, kernel_size=3, stride=1, padding=1, relu=True)
         )
         self.c3 = nn.Sequential(
-            nn.BatchNorm1d(1024),
-            nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(nf * 2),
+            nn.Linear(nf * 2, nf),
+            nn.BatchNorm1d(nf),
             nn.ELU(inplace=True),
-            nn.Linear(512, num_class),
+            nn.Linear(nf, num_class),
         )
 
         self.c_all = nn.Sequential(
-            nn.BatchNorm1d(1024 * 3),
-            nn.Linear(1024 * 3, 512),
-            nn.BatchNorm1d(512),
+            nn.BatchNorm1d(nf * 6),
+            nn.Linear(nf * 6, nf),
+            nn.BatchNorm1d(nf),
             nn.ELU(inplace=True),
-            nn.Linear(512, num_class),
+            nn.Linear(nf, num_class),
         )
         self._initialize_weights()
 
     def _initialize_weights(self):
         for name, param in self.named_parameters():
             if 'fe_1' in name or 'fe_2' in name or 'fe_3' in name:
-                continue  # Skip initialization for fe_1, fe_2, and fe_3
+                continue  
             
             if len(param.shape) < 2:
                 continue
@@ -117,4 +124,3 @@ def get_basic_conv_layers(in_nc, out_nc, kernel_size, stride=1, padding=0,
         layers += [nn.ReLU()]
 
     return layers
-    

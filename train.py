@@ -16,7 +16,7 @@ if __name__ == "__main__":
         batch_idx = 0
         for batch_idx, (inputs, targets) in enumerate(train_loader, start=1):
             inputs, targets = inputs.to(opt.device), targets.to(opt.device)
-            model.train_step(inputs, targets)
+            model.train_step(inputs, targets, epoch)
 
             if batch_idx % opt.print_batch_freq == 0:
                 model.print_metrics(epoch, batch_idx)

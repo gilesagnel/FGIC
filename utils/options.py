@@ -10,11 +10,12 @@ class Options:
     device: str = "mps"
 
     num_class = 88
-    img_load_size: int = 448 # 550 / 224
-    img_crop_size: int = 448 # 448 / 224
+    img_load_size: int = 224 # 550 / 224
+    img_crop_size: int = 224 # 448 / 224
     img_crop_padding: int = 8
     zip_path: str = "dataset/Seed dataset.zip"
-    cls_model: str = "cmal" # "cmal" / "resnet18" / "resnet34"
+    base_model:str = "resnet50" # "resnet18" / "resnet34" / "resnet50"  / "resNext50"
+    cls_model: str = "cmal" # "cmal" / "resnet" 
     
     lr: float = 2e-4
     start_epoch: int = 1
@@ -23,10 +24,10 @@ class Options:
     continue_train: bool = False
     load_epoch: int = 0
     print_freq: int = 1
-    print_batch_freq: int = 20
+    print_batch_freq: int = 5
     batch_size: int = 16
-    save_epoch_freq: int = 3
-    num_threads: int = 8
+    save_epoch_freq: int = 1
+    num_threads: int = 2
 
     checkpoints_dir: str = './checkpoints'
 
@@ -53,6 +54,6 @@ class TrainOptions(Options):
 @dataclass
 class TestOptions(Options):
     isTrain: bool = False
-    load_epoch: int = 5
+    load_epoch: int = 12
     num_threads = 1  
     batch_size = 1    
